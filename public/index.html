@@ -1,0 +1,47 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Склад</title>
+    <link rel="stylesheet" href="/style.css"> <!-- Ссылка на CSS -->
+</head>
+<body>
+    <!-- Навигационная панель -->
+    <nav>
+        <ul>
+            <li><a href="/admin.html">Админ-панель</a></li>
+            <li><a href="/reports.html">Отчёты</a></li>
+            <li><a href="/sales.html">Продажи</a></li>
+            <li><a href="/warehouse-layout.html">Размещение товаров</a></li>
+            <li><a href="/index.html">Поступления</a></li>
+            <li><a href="/products.html">Товары</a></li>
+        </ul>
+    </nav>
+
+    <h1>Обновить количество товара</h1>
+
+    <!-- Форма для добавления количества товара -->
+    <form id="addQuantityForm">
+        <label for="productSelect">Выберите товар:</label>
+        <select id="productSelect" name="productId" required>
+            <!-- Опции будут загружаться через JavaScript -->
+        </select>
+        <br>
+    
+        <label for="quantityToAdd">Количество для добавления:</label>
+        <input type="number" id="quantityToAdd" name="quantityToAdd" required min="1">
+        <br>
+
+
+    
+        <button type="submit">Добавить количество</button>
+    </form>
+
+    <br>
+    <a href="/products.html">Перейти к списку товаров</a>
+
+    <!-- Подключаем внешний JavaScript файл -->
+    <script src="/app.js"></script>
+</body>
+</html>
