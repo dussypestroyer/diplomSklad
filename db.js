@@ -217,6 +217,9 @@ async function getAllSales() {
 
 // 6. Обновление размещения товаров на складе
 async function updateWarehouseLayout(productId, x, y, priority) {
+    if (x < 0 || x >= 20 || y < 0 || y >= 10) {
+        throw new Error(`Некорректные координаты (x=${x}, y=${y}). Допустимые значения: x от 0 до 19, y от 0 до 9.`);
+    }
     try {
         console.log('Попытка обновления размещения товара:', { productId, x, y, priority });
         const result = await pool.query(
@@ -237,16 +240,16 @@ async function updateWarehouseLayout(productId, x, y, priority) {
 }
 
 // 7. Сохранение результатов ABC-анализа
-async function saveAbcAnalysisResults(productName, analysisDate, category, totalQuantity, totalRevenue) {
+async function saveAbcAnalysisResults(productName, analysisDate, category, totalQuantity, totalRevenue, productId) {
     try {
-        console.log('Попытка сохранения результатов ABC-анализа:', { productName, analysisDate, category, totalQuantity, totalRevenue });
+        console.log('Попытка сохранения результатов ABC-анализа:', { productName, analysisDate, category, totalQuantity, totalRevenue, productId });
         const result = await pool.query(
             `
-            INSERT INTO abc_analysis_results (product_name, analysis_date, category, total_quantity, total_revenue) 
-            VALUES ($1, $2, $3, $4, $5) 
+            INSERT INTO abc_analysis_results (product_name, analysis_date, category, total_quantity, total_revenue, product_id) 
+            VALUES ($1, $2, $3, $4, $5, $6) 
             RETURNING *
             `,
-            [productName, analysisDate, category, totalQuantity, totalRevenue]
+            [productName, analysisDate, category, totalQuantity, totalRevenue, productId]
         );
         console.log('Результаты ABC-анализа успешно сохранены:', result.rows[0]);
         return result.rows[0];
@@ -278,66 +281,59 @@ async function getProductPopularity() {
     }
 }
 
+
 // 9. Выполнение ABC-анализа
-async function performAbcAnalysis() {
+async function performAbcAnalysis(pool) {
     const client = await pool.connect();
     try {
         console.log('Начало выполнения ABC-анализа');
         await client.query('BEGIN');
 
-        // Шаг 1: Очистка основной таблицы
+        // Очистка таблиц
+        console.log('Очистка таблицы abc_analysis_results...');
         await client.query('DELETE FROM abc_analysis_results');
         console.log('Таблица abc_analysis_results очищена');
 
-        // Шаг 1: Очистка временной таблицы
+        console.log('Очистка временной таблицы temp_abc_analysis...');
         await client.query('DROP TABLE IF EXISTS temp_abc_analysis');
         console.log('Временная таблица очищена');
 
-        // Шаг 2: Создание временной таблицы для анализа
+        // Создание временной таблицы
+        console.log('Создание временной таблицы temp_abc_analysis...');
         await client.query(`
             CREATE TEMP TABLE temp_abc_analysis AS
             SELECT
                 p.id AS product_id,
                 p.name AS product_name,
-                COALESCE(SUM(s.revenue), 0) AS total_revenue
-            FROM products p
-            LEFT JOIN sales s ON p.name = s.product_name
+                SUM(s.quantity * p.price) AS total_revenue
+            FROM sales s
+            JOIN products p ON s.product_name = p.name
             GROUP BY p.id, p.name
-            ORDER BY total_revenue DESC
         `);
         console.log('Временная таблица создана');
 
-        // Если данных нет, возвращаем пустой результат
-        const checkData = await client.query('SELECT COUNT(*) FROM temp_abc_analysis');
-        if (checkData.rows[0].count === '0') {
-            await client.query('COMMIT');
-            console.log('ABC-анализ выполнен успешно (данных нет)');
-            return [];
-        }
-
-        // Шаг 3: Добавление столбца cumulative_revenue
+        // Добавление столбца cumulative_revenue
+        console.log('Добавление столбца cumulative_revenue...');
         await client.query(`
             ALTER TABLE temp_abc_analysis ADD COLUMN cumulative_revenue NUMERIC;
-        `);
 
-        // Шаг 4: Расчёт накопленной выручки
-        await client.query(`
             UPDATE temp_abc_analysis
-            SET cumulative_revenue = (
-                SELECT SUM(total_revenue)
-                FROM temp_abc_analysis t2
-                WHERE t2.total_revenue >= temp_abc_analysis.total_revenue
-            );
+            SET cumulative_revenue = subquery.cumulative_revenue
+            FROM (
+                SELECT
+                    product_id,
+                    SUM(total_revenue) OVER (ORDER BY total_revenue DESC) AS cumulative_revenue
+                FROM temp_abc_analysis
+            ) AS subquery
+            WHERE temp_abc_analysis.product_id = subquery.product_id;
         `);
-        console.log('Добавлен столбец cumulative_revenue');
+        console.log('Cumulative revenue рассчитан');
 
-        // Шаг 5: Добавление столбца category
+        // Расчет категорий A, B, C
+        console.log('Расчет категорий A, B, C...');
         await client.query(`
-            ALTER TABLE temp_abc_analysis ADD COLUMN category TEXT;
-        `);
+            ALTER TABLE temp_abc_analysis ADD COLUMN category CHAR(1);
 
-        // Шаг 6: Расчёт категорий
-        await client.query(`
             UPDATE temp_abc_analysis
             SET category = CASE
                 WHEN cumulative_revenue / (SELECT SUM(total_revenue) FROM temp_abc_analysis) <= 0.7 THEN 'A'
@@ -347,18 +343,24 @@ async function performAbcAnalysis() {
         `);
         console.log('Категории рассчитаны');
 
-        // Шаг 7: Сохранение результатов в основную таблицу
+        // Сохранение результатов ABC-анализа
+        console.log('Сохранение результатов ABC-анализа...');
         await client.query(`
-        INSERT INTO abc_analysis_results (product_name, analysis_date, category, total_quantity, total_revenue)
-        SELECT
-            product_name,
-            CURRENT_DATE AS analysis_date,
-            category,
-            NULL AS total_quantity,
-            total_revenue
-        FROM temp_abc_analysis
-         `);
+            INSERT INTO abc_analysis_results (product_name, analysis_date, category, total_revenue, product_id)
+            SELECT
+                product_name,
+                NOW() AS analysis_date,
+                category,
+                total_revenue,
+                product_id
+            FROM temp_abc_analysis
+            WHERE product_id IS NOT NULL;
+        `);
         console.log('Результаты ABC-анализа сохранены');
+
+        // Размещение товаров в зонах
+        console.log('Размещение товаров в зонах A, B, C...');
+        await placeProductsInZones(client); // Передаем клиент в функцию
 
         await client.query('COMMIT');
         console.log('ABC-анализ выполнен успешно');
@@ -368,12 +370,54 @@ async function performAbcAnalysis() {
         throw new Error('Не удалось выполнить ABC-анализ');
     } finally {
         client.release();
-        console.log('Подключение к базе данных освобождено');
     }
 }
 
-// 10. Получение результатов ABC-анализа
-async function getAbcResults() {
+// Вспомогательная функция для размещения товаров в зонах
+async function placeProductsInZones(client) {
+    const zones = {
+        A: [],
+        B: [],
+        C: [],
+    };
+
+    // Заполняем пулы свободных ячеек
+    for (let y = 0; y <= 5; y++) {
+        for (let x = 14; x <= 19; x++) zones.A.push({ x, y }); // Зона A
+        for (let x = 8; x <= 13; x++) zones.B.push({ x, y }); // Зона B
+        for (let x = 3; x <= 7; x++) zones.C.push({ x, y }); // Зона C
+    }
+
+    // Получаем результаты ABC-анализа
+    const abcResults = await getAbcResults(client);
+
+    // Размещаем товары в пулах
+    for (const row of abcResults) {
+        const { product_id, category } = row;
+
+        if (!product_id) {
+            console.warn(`Пропущена запись с NULL product_id в категории ${category}`);
+            continue;
+        }
+
+        if (!zones[category] || zones[category].length === 0) {
+            console.warn(`Нет свободных ячеек в зоне ${category} для товара с ID ${product_id}`);
+            continue;
+        }
+
+        const { x, y } = zones[category].pop(); // Берем первую свободную ячейку
+
+        // Добавляем запись в таблицу warehouse_layout
+        await client.query(`
+            INSERT INTO warehouse_layout (product_id, zone, x, y, priority)
+            VALUES ($1, $2, $3, $4, 1)
+            ON CONFLICT (product_id) DO UPDATE SET x = $3, y = $4, priority = 1
+        `, [product_id, category, x, y]);
+    }
+}
+
+//Получение результатов АВС-анализа
+async function getAbcResults(pool) {
     try {
         console.log('Попытка получения результатов ABC-анализа');
         const result = await pool.query(`
@@ -414,10 +458,30 @@ async function moveProductToBuffer(productId) {
             throw new Error('Товар с указанным ID не найден');
         }
 
-        // Размещаем товар в отстойник (зона "buffer", координаты по умолчанию)
+        // Находим первую свободную ячейку в зоне "buffer"
+        const freeCellResult = await client.query(`
+            SELECT x, y
+            FROM generate_series(0, 5) AS y
+            CROSS JOIN generate_series(0, 2) AS x
+            WHERE NOT EXISTS (
+                SELECT 1
+                FROM warehouse_layout wl
+                WHERE wl.zone = 'buffer' AND wl.x = x AND wl.y = y
+            )
+            ORDER BY y, x
+            LIMIT 1
+        `);
+
+        if (freeCellResult.rows.length === 0) {
+            throw new Error('Нет свободных ячеек в отстойнике');
+        }
+
+        const { x, y } = freeCellResult.rows[0];
+
+        // Размещаем товар в отстойник
         const result = await client.query(
             'INSERT INTO warehouse_layout (product_id, zone, x, y) VALUES ($1, $2, $3, $4) ON CONFLICT (product_id) DO UPDATE SET zone = $2, x = $3, y = $4 RETURNING *',
-            [productId, 'buffer', 0, 0] // Зона "buffer", координаты (0, 0)
+            [productId, 'buffer', x, y]
         );
 
         await client.query('COMMIT');
@@ -434,13 +498,36 @@ async function moveProductToBuffer(productId) {
 // Функция для получения текущего расположения товаров на складе
 async function getWarehouseLayout() {
     try {
-        const result = await pool.query(
-            'SELECT product_id, zone, x, y FROM warehouse_layout'
-        );
+        const result = await pool.query(`
+            SELECT product_id, zone, x, y
+            FROM warehouse_layout
+            ORDER BY zone, y, x
+        `);
         return result.rows;
     } catch (err) {
         console.error('Ошибка при получении расположения товаров:', err.message || err);
         throw new Error('Не удалось получить расположение товаров');
+    }
+}
+
+
+// Функция для получения данных ABC-анализа с размещением товаров
+async function getAbcAnalysisWithLayout() {
+    try {
+        const result = await pool.query(`
+        SELECT
+            wl.product_id,
+            wl.zone,
+            wl.x,
+            wl.y
+        FROM warehouse_layout wl
+        ORDER BY wl.zone, wl.y, wl.x
+        `);
+        console.log('Результаты запроса getAbcAnalysisWithLayout:', result.rows);
+        return result.rows;
+    } catch (err) {
+        console.error('Ошибка при получении данных размещения:', err.message || err);
+        throw new Error('Не удалось получить данные размещения');
     }
 }
 
@@ -463,5 +550,8 @@ module.exports = {
     getAbcResults,
     moveProductToBuffer,
     getWarehouseLayout,
+    getAbcAnalysisWithLayout,
+    placeProductsInZones,
 };
+
 

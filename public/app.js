@@ -617,6 +617,7 @@ const setupMoveToBufferZone = () => {
         const productId = bufferForm.productSelect.value;
 
         try {
+            // Отправляем запрос на сервер для размещения товара в отстойник
             const response = await fetch('/warehouse/move-to-buffer', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
@@ -628,14 +629,22 @@ const setupMoveToBufferZone = () => {
             }
 
             alert('Товар успешно размещен в отстойник!');
+            // Обновляем схему склада после размещения товара
+            const layoutResponse = await fetch('/warehouse/layout');
+            if (!layoutResponse.ok) {
+                throw new Error(`Ошибка сервера: ${layoutResponse.status} ${layoutResponse.statusText}`);
+            }
+            const layout = await layoutResponse.json();
+            displayWarehouseGridWithAbc(layout); // Обновляем отображение
         } catch (error) {
             console.error('Ошибка при размещении товара в отстойник:', error);
             alert(error.message || 'Не удалось разместить товар в отстойник.');
         }
     });
 };
-
-const setupViewLayout = () => {
+    
+    // Функция для просмотра расположения товаров
+    const setupViewLayout = () => {
     const viewLayoutButton = document.getElementById('viewLayoutButton');
     const layoutDisplayDiv = document.getElementById('layoutDisplay');
     if (!viewLayoutButton || !layoutDisplayDiv) {
@@ -651,7 +660,7 @@ const setupViewLayout = () => {
             }
 
             const layout = await response.json();
-            displayWarehouseGrid(layout);
+            displayWarehouseGridWithAbc(layout);
         } catch (error) {
             console.error('Ошибка при загрузке расположения товаров:', error);
             alert(error.message || 'Не удалось загрузить расположение товаров.');
@@ -660,8 +669,8 @@ const setupViewLayout = () => {
 };
 
 
-// Функция для отображения схемы склада
-const displayWarehouseGrid = (layout) => {
+// Функция для отображения схемы склада с товарами из ABC-анализа
+const displayWarehouseGridWithAbc = async () => {
     const warehouseGridDiv = document.getElementById('warehouseGrid');
     if (!warehouseGridDiv) {
         console.warn('Контейнер для схемы склада не найден в DOM.');
@@ -737,24 +746,32 @@ const displayWarehouseGrid = (layout) => {
         }
     }
 
-    // Добавляем товары из layout
-    if (Array.isArray(layout)) {
+    // Получаем данные ABC-анализа с размещением
+    try {
+        const response = await fetch('/abc-analysis-layout');
+        if (!response.ok) {
+            throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`);
+        }
+        const layout = await response.json();
+        console.log('Данные ABC-анализа:', layout);
+
+        // Добавляем товары из layout
         layout.forEach(item => {
-            const cellIndex = item.y * cols + item.x; // Индекс ячейки в сетке
+            const { x, y, product_id } = item;
+            if (x < 0 || x >= cols || y < 0 || y >= rows) {
+                console.warn(`Некорректные координаты для товара с ID "${product_id}": (x=${x}, y=${y})`);
+                return;
+            }
+            const cellIndex = y * cols + x;
+            console.log(`Товар с ID "${product_id}" с координатами (x=${x}, y=${y}) -> cellIndex=${cellIndex}`);
             const cell = warehouseGridDiv.children[cellIndex];
             if (cell) {
-                cell.textContent = `#${item.product_id}`;
-                if (item.zone === 'buffer') {
-                    cell.classList.add('buffer');
-                } else if (item.zone === 'A') {
-                    cell.classList.add('zone-a');
-                } else if (item.zone === 'B') {
-                    cell.classList.add('zone-b');
-                } else if (item.zone === 'C') {
-                    cell.classList.add('zone-c');
-                }
+                cell.textContent = `#${product_id}`;
             }
         });
+    } catch (error) {
+        console.error('Ошибка при загрузке данных ABC-анализа:', error);
+        alert(error.message || 'Не удалось загрузить данные ABC-анализа.');
     }
 };
 
@@ -769,10 +786,11 @@ const displayWarehouseGrid = (layout) => {
     setupMoveToBufferZone();
     setupViewLayout();
     displayPopularityResults();
-    displayWarehouseGrid();
 
+    await displayWarehouseGridWithAbc();
     await loadProductsIntoSelect();
     await loadProductsList();
     setupAddSale();
     await loadSalesList();
 });
+

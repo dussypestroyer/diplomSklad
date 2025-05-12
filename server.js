@@ -1,7 +1,6 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const db = require('./db'); // Импортируем функции из db.js
-const { pool } = require('./db'); // Импортируем pool
 require('dotenv').config();
 
 // Создаём экземпляр Express
@@ -131,7 +130,7 @@ app.put('/products/:id/update', async (req, res) => {
 // Маршрут для выполнения ABC-анализа
 app.post('/abc-analysis', async (req, res) => {
     try {
-        await db.performAbcAnalysis();
+        await db.performAbcAnalysis(db.pool); // Передаем pool явно
         res.status(200).json({ message: 'ABC-анализ выполнен успешно' });
     } catch (error) {
         console.error('Ошибка при выполнении ABC-анализа:', error.message || error);
@@ -142,7 +141,7 @@ app.post('/abc-analysis', async (req, res) => {
 // Маршрут для получения результатов ABC-анализа
 app.get('/abc-results', async (req, res) => {
     try {
-        const results = await db.getAbcResults(); // Используем функцию из db.js
+        const results = await db.getAbcResults(db.pool); // Передаем pool явно
         res.status(200).json(results); // Отправляем результаты клиенту
     } catch (error) {
         console.error('Ошибка при получении результатов ABC-анализа:', error.message || error);
@@ -220,11 +219,9 @@ app.get('/sales', async (req, res) => {
 // Маршрут для размещения товара в отстойник
 app.post('/warehouse/move-to-buffer', async (req, res) => {
     const { productId } = req.body;
-
     if (!productId) {
         return res.status(400).json({ error: 'ID товара обязателен' });
     }
-
     try {
         const result = await db.moveProductToBuffer(productId);
         res.status(200).json({ message: 'Товар успешно размещен в отстойник', result });
@@ -242,6 +239,18 @@ app.get('/warehouse/layout', async (req, res) => {
     } catch (error) {
         console.error('Ошибка при получении расположения товаров:', error.message || error);
         res.status(500).json({ error: 'Ошибка при получении расположения товаров' });
+    }
+});
+
+
+// Маршрут для получения данных ABC-анализа с размещением
+app.get('/abc-analysis-layout', async (req, res) => {
+    try {
+        const results = await db.getAbcAnalysisWithLayout();
+        res.status(200).json(results);
+    } catch (error) {
+        console.error('Ошибка при получении данных размещения:', error.message || error);
+        res.status(500).json({ error: 'Ошибка при получении данных размещения' });
     }
 });
 
