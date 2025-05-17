@@ -19,6 +19,38 @@ pool.on('error', (err) => {
     console.error('Ошибка подключения к базе данных:', err);
 });
 
+// Авторизация пользователя
+async function authenticateUser(username, password) {
+    try {
+        const result = await pool.query(`
+            SELECT id, username, password, role
+            FROM users
+            WHERE username = $1
+        `, [username]);
+
+        if (result.rows.length === 0) {
+            return null;
+        }
+
+        const user = result.rows[0];
+
+        // Простейшая проверка пароля (в проде — использовать bcrypt!)
+        if (user.password !== password) {
+            return null;
+        }
+
+        return {
+            id: user.id,
+            username: user.username,
+            role: user.role
+        };
+    } catch (err) {
+        console.error('Ошибка при проверке пользователя:', err.message || err);
+        throw new Error('Ошибка авторизации');
+    }
+}
+
+
 // Функция для создания нового товара и его автоматическое размещение в зоне buffer
 async function createProduct(productName, itemsPerPallet, quantity, price) {
     const client = await pool.connect();
@@ -153,7 +185,6 @@ async function getAllProducts() {
         const result = await pool.query('SELECT * FROM products ORDER BY id ASC');
         return result.rows;
     } catch (err) {
-        console.error('Ошибка при получении списка товаров:', err.message || err);
         throw new Error('Не удалось получить список товаров');
     }
 }
@@ -249,7 +280,6 @@ async function addSale(productName, saleDate, quantity, revenue) {
         client.release();
     }
 }
-
 // 5. Получение всех продаж
 async function getAllSales() {
     try {
@@ -556,6 +586,7 @@ module.exports = {
     getAbcAnalysisWithLayout,
     placeProductsInZones,
     placeProductInBuffer,
+    authenticateUser,
 };
 
 

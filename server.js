@@ -1,6 +1,7 @@
 const express = require('express');
 const bodyParser = require('body-parser');
 const db = require('./db'); // Импортируем функции из db.js
+
 require('dotenv').config();
 
 // Создаём экземпляр Express
@@ -9,12 +10,21 @@ const port = process.env.PORT || 5000;
 
 const cors = require('cors'); // Импортируем модуль CORS
 
+
 // Подключаем middleware для обработки CORS
 app.use(cors({
     origin: 'http://127.0.0.1:5000', // Разрешаем запросы только с этого источника
     methods: ['GET', 'POST', 'PUT', 'DELETE'], // Разрешаем методы
     allowedHeaders: ['Content-Type'], // Разрешаем заголовки
+    credentials: true,
 }));
+
+const cookieParser = require('cookie-parser');
+
+app.use(cors({ /* ... */ }));
+app.use(bodyParser.json());
+app.use(cookieParser()); // вот сюда
+
 
 // Middleware для парсинга JSON
 app.use(bodyParser.json());
@@ -23,12 +33,72 @@ app.use(bodyParser.json());
 app.use(express.static('public'));
 
 
+function requireAuth(req, res, next) {
+    const session = req.cookies.session_id;
+    if (!session) {
+        return res.status(401).json({ error: 'Требуется авторизация' });
+    }
+    next();
+}
+
+function requireAdmin(req, res, next) {
+    const role = req.cookies.role;
+    if (role !== 'admin') {
+        return res.status(403).json({ error: 'Доступ запрещён: только для админов' });
+    }
+    next();
+}
+
+
+
+// ------------------------------
+// Маршруты для работы с авторизацией
+// ------------------------------
+
+app.post('/login', async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username || !password) {
+        return res.status(400).json({ error: 'Введите имя пользователя и пароль' });
+    }
+
+    try {
+        const user = await db.authenticateUser(username, password);
+        if (!user) {
+            return res.status(401).json({ error: 'Неверный логин или пароль' });
+        }
+
+        const sessionId = `${user.id}_${Date.now()}`;
+
+        // Устанавливаем cookie
+        res.cookie('session_id', sessionId, {
+            httpOnly: true,
+            maxAge: 60 * 60 * 1000,
+            sameSite: 'Lax',
+            secure: false // или true, если используешь HTTPS
+        });
+
+        res.cookie('role', user.role, {
+            httpOnly: false,
+            maxAge: 60 * 60 * 1000,
+            sameSite: 'Lax',
+            secure: false
+        });
+
+        res.status(200).json({ message: 'Вход выполнен', role: user.role });
+    } catch (error) {
+        console.error('Ошибка при логине:', error.message || error);
+        res.status(500).json({ error: 'Внутренняя ошибка сервера' });
+    }
+});
+
+
 // ------------------------------
 // Маршруты для работы с товарами
 // ------------------------------
 
-// Добавление нового товара
-app.post('/products', async (req, res) => {
+//Создание товара
+app.post('/api/products', requireAuth, async (req, res) => {
     const { name, itemsPerPallet, quantity , price} = req.body;
     console.log('Полученные данные:', req.body);
 
@@ -46,8 +116,8 @@ app.post('/products', async (req, res) => {
     }
 });
 
-// Получение списка всех товаров
-app.get('/products', async (req, res) => {
+//Получение списка всех товаров
+app.get('/api/products', requireAuth, async (req, res) => {
     try {
         const products = await db.getAllProducts();
         // Преобразуем price в число для каждого товара
@@ -62,8 +132,8 @@ app.get('/products', async (req, res) => {
     }
 });
 
-// Маршрут для добавления количества товара
-app.put('/products/:id/add-quantity', async (req, res) => {
+//Добавление количества товара
+app.put('/api/products/:id/add-quantity', requireAuth, async (req, res) => {
     const productId = req.params.id; // ID товара из параметров маршрута
     const { quantityToAdd } = req.body;
 
@@ -106,7 +176,8 @@ app.put('/products/:id/add-quantity', async (req, res) => {
     }
 });
 
-app.put('/products/:id/update', async (req, res) => {
+//Редактирование товара
+app.put('/api/products/:id/update', requireAuth, async (req, res) => {
     const productId = req.params.id;
     const { name, items_per_pallet, quantity, price } = req.body;
 
@@ -124,12 +195,24 @@ app.put('/products/:id/update', async (req, res) => {
     }
 });
 
+//Удаление товара
+app.delete('/api/products/:id', requireAuth, async (req, res) => {
+    const id = req.params.id;
+    try {
+        await db.deleteProduct(id);
+        res.status(200).json({ message: 'Продукт удалён' });
+    } catch (error) {
+        console.error('Ошибка при удалении продукта:', error);
+        res.status(500).json({ error: 'Ошибка сервера' });
+    }
+});
+
 // ------------------------------
 // Маршруты для ABC-анализа
 // ------------------------------
 
 // Маршрут для выполнения ABC-анализа
-app.post('/abc-analysis', async (req, res) => {
+app.post('/api/abc-analysis', requireAuth, async (req, res) => {
     try {
         await db.performAbcAnalysis(db.pool); // Передаем pool явно
         res.status(200).json({ message: 'ABC-анализ выполнен успешно' });
@@ -140,7 +223,7 @@ app.post('/abc-analysis', async (req, res) => {
 });
 
 // Маршрут для получения результатов ABC-анализа
-app.get('/abc-results', async (req, res) => {
+app.get('/api/abc-results', requireAuth, async (req, res) => {
     try {
         const results = await db.getAbcResults(db.pool); // Передаем pool явно
         res.status(200).json(results); // Отправляем результаты клиенту
@@ -150,12 +233,13 @@ app.get('/abc-results', async (req, res) => {
     }
 });
 
+
 // ------------------------------
 // Маршруты для отчётов
 // ------------------------------
 
 // Маршрут для получения отчёта по популярности товаров
-app.get('/product-popularity', async (req, res) => {
+app.get('/api/product-popularity', requireAuth, async (req, res) => {
     try {
         const results = await db.getProductPopularity();
         res.status(200).json(results);
@@ -169,10 +253,8 @@ app.get('/product-popularity', async (req, res) => {
 // Маршруты для работы с продажами
 // ------------------------------
 
-
-
-// Добавление новой продажи
-app.post('/sales', async (req, res) => {
+//Добавление продажи
+app.post('/api/sales', requireAuth, async (req, res) => {
     const { productId, saleDate, quantity } = req.body;
 
     // Проверяем обязательные поля
@@ -201,7 +283,7 @@ app.post('/sales', async (req, res) => {
 });
 
 // Получение списка всех продаж
-app.get('/sales', async (req, res) => {
+app.get('/api/sales', requireAuth, async (req, res) => {
     try {
         const sales = await db.getAllSales();
         res.status(200).json(sales);
@@ -216,11 +298,8 @@ app.get('/sales', async (req, res) => {
 // Маршруты для работы с размещение товаров
 // ------------------------------
 
-
-
-
 // Маршрут для получения текущего расположения товаров
-app.get('/warehouse/layout', async (req, res) => {
+app.get('/api/warehouse/layout', requireAuth, async (req, res) => {
     try {
         const layout = await db.getWarehouseLayout();
         res.status(200).json(layout);
@@ -230,9 +309,8 @@ app.get('/warehouse/layout', async (req, res) => {
     }
 });
 
-
 // Маршрут для получения данных ABC-анализа с размещением
-app.get('/abc-analysis-layout', async (req, res) => {
+app.get('/api/abc-analysis-layout', requireAuth, async (req, res) => {
     try {
         const results = await db.getAbcAnalysisWithLayout();
         res.status(200).json(results);
@@ -246,32 +324,53 @@ app.get('/abc-analysis-layout', async (req, res) => {
 // Маршруты для страниц
 // ------------------------------
 
-app.get('/admin', (req, res) => {
+app.get('/api/check-session', requireAuth, (req, res) => {
+    res.status(200).json({ message: 'Сессия активна' });
+});
+
+
+// Главная страница
+app.get('/', requireAuth, (req, res) => {
+    res.sendFile(__dirname + '/public/index.html');
+});
+
+app.get('/index.html', requireAuth, (req, res) => {
+    res.sendFile(__dirname + '/public/index.html');
+});
+
+// Страница администратора
+app.get('/admin.html', requireAdmin, (req, res) => {
     res.sendFile(__dirname + '/public/admin.html');
 });
 
-app.get('/abc-analysis', (req, res) => {
+// Страница ABC-анализа
+app.get('/abc-analysis.html', requireAuth, (req, res) => {
     res.sendFile(__dirname + '/public/abc-analysis.html');
 });
 
-app.get('/products', (req, res) => {
+// Страница со списком товаров
+app.get('/products.html', requireAuth, (req, res) => {
     res.sendFile(__dirname + '/public/products.html');
 });
 
-app.get('/reports', (req, res) => {
+// Страница с отчётами
+app.get('/reports.html', requireAuth, (req, res) => {
     res.sendFile(__dirname + '/public/reports.html');
 });
 
-app.get('/sales', (req, res) => {
+// Страница продаж
+app.get('/sales.html', requireAuth, (req, res) => {
     res.sendFile(__dirname + '/public/sales.html');
 });
 
-app.get('/warehouse-layout', (req, res) => {
+// Страница расположения товаров
+app.get('/warehouse-layout.html', requireAuth, (req, res) => {
     res.sendFile(__dirname + '/public/warehouse-layout.html');
 });
 
-app.get('/index', (req, res) => {
-    res.sendFile(__dirname + '/public/index.html');
+// Страница логина (без авторизации!)
+app.get('/login.html', (req, res) => {
+    res.sendFile(__dirname + '/public/login.html');
 });
 
 // Запуск сервера

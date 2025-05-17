@@ -1,5 +1,58 @@
 document.addEventListener('DOMContentLoaded', async () => {
 
+    //Проверка авторизации при загрузке страницы
+    const checkAuth = async () => {
+        try {
+            const response = await fetch('/api/check-session', {
+                method: 'GET',
+                credentials: 'include',
+            });
+    
+            if (!response.ok) {
+                throw new Error('Сессия недействительна');
+            }
+    
+            const data = await response.json();
+            console.log('✅ Сессия активна:', data);
+        } catch (error) {
+            console.warn('❌ Пользователь не авторизован:', error.message);
+            window.location.href = '/login.html';
+        }
+    };
+    
+
+    // Функция для обработки входа
+    const setupLoginForm = () => {
+        const loginForm = document.getElementById('loginForm');
+        const errorMessage = document.getElementById('errorMessage');
+    
+        if (loginForm) {
+            loginForm.addEventListener('submit', async (e) => {
+                e.preventDefault();
+                const username = document.getElementById('username').value;
+                const password = document.getElementById('password').value;
+    
+                try {
+                    const response = await fetch('/login', {
+                        method: 'POST',
+                        headers: { 'Content-Type': 'application/json' },
+                        body: JSON.stringify({ username, password })
+                    });
+    
+                    if (!response.ok) throw new Error('Неверный логин или пароль');
+    
+                    const data = await response.json();
+                    alert(data.message);
+                    window.location.href = data.role === 'admin' ? '/admin.html' : '/index.html';
+                } catch (error) {
+                    errorMessage.textContent = error.message;
+                    errorMessage.style.display = 'block';
+                }
+            });
+        } else {
+            console.warn('Форма логина не найдена в DOM.');
+        }
+    };
 
     // Функция для настройки обработчиков ABC-анализа
     const setupAbcAnalysis = () => {
@@ -10,9 +63,10 @@ document.addEventListener('DOMContentLoaded', async () => {
             performAbcButton.addEventListener('click', async () => {
                 try {
                     console.log('Выполняется запрос к серверу для ABC-анализа...');
-                    const response = await fetch('http://localhost:5000/abc-analysis', {
+                    const response = await fetch('/api/abc-analysis', {
                         method: 'POST',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
                     });
     
                     if (!response.ok) {
@@ -23,9 +77,10 @@ document.addEventListener('DOMContentLoaded', async () => {
                     console.log('Результаты ABC-анализа получены');
     
                     // Получаем актуальные результаты из базы данных
-                    const abcResponse = await fetch('http://localhost:5000/abc-results', {
+                    const abcResponse = await fetch('/api/abc-results', {
                         method: 'GET',
                         headers: { 'Content-Type': 'application/json' },
+                        credentials: 'include',
                     });
     
                     if (!abcResponse.ok) {
@@ -92,11 +147,12 @@ document.addEventListener('DOMContentLoaded', async () => {
             fetchPopularityButton.addEventListener('click', async () => {
                 try {
                     console.log('Выполняется запрос к серверу для отчёта по популярности товаров...');
-                    const response = await fetch('http://localhost:5000/product-popularity', {
+                    const response = await fetch('/api/product-popularity', {
                         method: 'GET',
                         headers: {
                             'Content-Type': 'application/json',
                         },
+                        credentials: 'include',
                     });
 
                     if (!response.ok) {
@@ -132,11 +188,12 @@ document.addEventListener('DOMContentLoaded', async () => {
 
                 try {
                     console.log('Отправка запроса на добавление товара:', formData);
-                    const response = await fetch('http://localhost:5000/products', {
+                    const response = await fetch('/api/products', {
                         method: 'POST',
                         headers: {
                             'Content-Type': 'application/json',
                         },
+                        credentials: 'include',
                         body: JSON.stringify(formData),
                     });
 
@@ -217,9 +274,10 @@ const setupAddToProductQuantity = () => {
                 throw new Error('Количество для добавления должно быть больше нуля.');
             }
 
-            const response = await fetch(`/products/${productId}/add-quantity`, {
+            const response = await fetch(`/api/products/${productId}/add-quantity`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({ quantityToAdd }),
             });
 
@@ -258,11 +316,12 @@ const setupUpdateProduct = () => {
                 console.log('Отправка запроса на обновление данных товара:', { productId, newName, newItemsPerPallet, newQuantity, newPrice });
 
                 // Отправляем запрос на сервер
-                const response = await fetch(`http://localhost:5000/products/${productId}/update`, {
+                const response = await fetch(`/api/products/${productId}/update`, {
                     method: 'PUT',
                     headers: {
                         'Content-Type': 'application/json',
                     },
+                    credentials: 'include',
                     body: JSON.stringify({
                         name: newName,
                         items_per_pallet: newItemsPerPallet,
@@ -300,9 +359,10 @@ const setupUpdateProduct = () => {
     
         try {
             console.log('Загрузка списка товаров...');
-            const response = await fetch('/products', {
+            const response = await fetch('/api/products', {
                 method: 'GET',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
             });
     
             if (!response.ok) {
@@ -338,9 +398,10 @@ const loadProductsList = async () => {
 
     try {
         console.log('Загрузка списка товаров...');
-        const response = await fetch('http://localhost:5000/products', {
+        const response = await fetch('/api/products', {
             method: 'GET',
             headers: { 'Content-Type': 'application/json' },
+            credentials: 'include',
         });
 
         if (!response.ok) {
@@ -398,9 +459,10 @@ const loadProductsList = async () => {
             row.querySelector('.delete-btn').addEventListener('click', async () => {
                 if (confirm('Вы уверены, что хотите удалить этот товар?')) {
                     try {
-                        const deleteResponse = await fetch(`http://localhost:5000/products/${product.id}`, {
+                        const deleteResponse = await fetch(`/api/products/${product.id}`, {
                             method: 'DELETE',
                             headers: { 'Content-Type': 'application/json' },
+                            credentials: 'include',
                         });
 
                         if (!deleteResponse.ok) {
@@ -463,9 +525,10 @@ function openEditModal(product) {
         };
         try {
             console.log('Отправка запроса на обновление товара:', formData);
-            const response = await fetch(`http://localhost:5000/products/${formData.id}/update`, {
+            const response = await fetch(`/api/products/${formData.id}/update`, {
                 method: 'PUT',
                 headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
                 body: JSON.stringify({
                     name: formData.name,
                     items_per_pallet: formData.itemsPerPallet,
@@ -485,8 +548,10 @@ function openEditModal(product) {
         }
     });
 }
-    // Функция для настройки обработчиков добавления продажи
-    const setupAddSale = () => {
+
+
+// Функция для настройки обработчиков добавления продажи
+const setupAddSale = () => {
     const saleForm = document.getElementById('saleForm');
     if (!saleForm) {
         console.warn('Форма для добавления продажи не найдена в DOM.');
@@ -533,6 +598,7 @@ function openEditModal(product) {
     });
 };
 
+
 // Функция для загрузки и отображения списка продаж
 const loadSalesList = async () => {
     const salesDiv = document.getElementById('sales');
@@ -543,11 +609,12 @@ const loadSalesList = async () => {
 
     try {
 
-        const response = await fetch('http://localhost:5000/sales', {
+        const response = await fetch('/api/sales', {
             method: 'GET',
             headers: {
                 'Content-Type': 'application/json',
             },
+            credentials: 'include',
         });
 
         if (!response.ok) {
@@ -617,7 +684,7 @@ const loadSalesList = async () => {
 
     viewLayoutButton.addEventListener('click', async () => {
         try {
-            const response = await fetch('/warehouse/layout');
+            const response = await fetch('/api/warehouse/layout');
             if (!response.ok) {
                 throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`);
             }
@@ -711,7 +778,7 @@ const displayWarehouseGridWithAbc = async () => {
 
     // Получаем данные ABC-анализа с размещением
     try {
-        const response = await fetch('/abc-analysis-layout');
+        const response = await fetch('/api/abc-analysis-layout');
         if (!response.ok) {
             throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`);
         }
@@ -738,9 +805,13 @@ const displayWarehouseGridWithAbc = async () => {
     }
 };
 
-
+const isLoginPage = window.location.pathname.includes('login.html');
+if (!isLoginPage) {
+    await checkAuth();  // только если это НЕ login.html
+}
 
     // Инициализация функционала
+    setupLoginForm();
     setupAbcAnalysis();
     setupPopularityReport();
     setupAddProduct();
@@ -748,11 +819,12 @@ const displayWarehouseGridWithAbc = async () => {
     setupAddToProductQuantity();
     setupViewLayout();
     displayPopularityResults();
+    setupAddSale();
 
     await displayWarehouseGridWithAbc();
     await loadProductsIntoSelect();
     await loadProductsList();
-    setupAddSale();
     await loadSalesList();
+    setupLoginForm();
 });
 

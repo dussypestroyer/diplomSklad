@@ -19,34 +19,38 @@
         </ul>
     </nav>
 
-    <h1>Список товаров</h1>
-    <div id="productList"></div> <!-- Здесь будет отображаться список товаров -->
+    <div class="main-container">
+        <h1>Список товаров</h1>
+        <div id="productList"></div> <!-- Здесь будет отображаться список товаров -->
+    
+        <br>
+        <a href="/index.html">Добавить новый товар</a>
+    
+        <!-- Модальное окно для редактирования товара -->
+    <div id="editModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+        <h2>Редактировать товар</h2>
+        <form id="updateForm">
+            <input type="hidden" id="editProductId" name="id">
+            <label for="editName">Название товара:</label>
+            <input type="text" id="editName" name="name" required><br>
+    
+            <label for="editItemsPerPallet">Количество на поддоне:</label>
+            <input type="number" id="editItemsPerPallet" name="itemsPerPallet" required><br>
+    
+            <label for="editQuantity">Количество (штук):</label>
+            <input type="number" id="editQuantity" name="quantity" required><br>
+    
+            <label for="editPrice">Цена за единицу:</label>
+            <input type="number" id="editPrice" name="price" step="0.01" required min="0"><br>
+    
+            <button type="submit">Сохранить изменения</button>
+            <button type="button" id="closeModal">Отмена</button>
+        </form>
+    </div>
+    
+        <script src="/app.js"></script> <!-- Подключаем тот же JavaScript файл -->
+    </div>
 
-    <br>
-    <a href="/index.html">Добавить новый товар</a>
 
-    <!-- Модальное окно для редактирования товара -->
-<div id="editModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-    <h2>Редактировать товар</h2>
-    <form id="updateForm">
-        <input type="hidden" id="editProductId" name="id">
-        <label for="editName">Название товара:</label>
-        <input type="text" id="editName" name="name" required><br>
-
-        <label for="editItemsPerPallet">Количество на поддоне:</label>
-        <input type="number" id="editItemsPerPallet" name="itemsPerPallet" required><br>
-
-        <label for="editQuantity">Количество (штук):</label>
-        <input type="number" id="editQuantity" name="quantity" required><br>
-
-        <label for="editPrice">Цена за единицу:</label>
-        <input type="number" id="editPrice" name="price" step="0.01" required min="0"><br>
-
-        <button type="submit">Сохранить изменения</button>
-        <button type="button" id="closeModal">Отмена</button>
-    </form>
-</div>
-
-    <script src="/app.js"></script> <!-- Подключаем тот же JavaScript файл -->
 </body>
 </html>
