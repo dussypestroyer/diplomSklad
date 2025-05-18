@@ -54,6 +54,30 @@ document.addEventListener('DOMContentLoaded', async () => {
         }
     };
 
+    //Функция для обработки выхода
+    const setupLogoutButton = () => {
+        const logoutBtn = document.getElementById('logoutBtn');
+        if (logoutBtn) {
+            logoutBtn.addEventListener('click', async () => {
+                try {
+                    const response = await fetch('/logout', {
+                        method: 'GET',
+                        credentials: 'include',
+                    });
+    
+                    if (!response.ok) {
+                        throw new Error('Ошибка при выходе');
+                    }
+    
+                    window.location.href = '/login.html';
+                } catch (error) {
+                    console.error('Ошибка при выходе:', error);
+                    alert(error.message || 'Не удалось выйти.');
+                }
+            });
+        }
+    };
+
     // Функция для настройки обработчиков ABC-анализа
     const setupAbcAnalysis = () => {
         const performAbcButton = document.getElementById('performAbcAnalysis');
@@ -575,7 +599,7 @@ const setupAddSale = () => {
 
         try {
             // Отправляем данные на сервер
-            const response = await fetch('/sales', {
+            const response = await fetch('/api/sales', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({
@@ -820,11 +844,23 @@ if (!isLoginPage) {
     setupViewLayout();
     displayPopularityResults();
     setupAddSale();
+    setupLogoutButton();
 
     await displayWarehouseGridWithAbc();
     await loadProductsIntoSelect();
     await loadProductsList();
     await loadSalesList();
-    setupLoginForm();
+
+
+    // 👇 Скрываем кнопку "Админ-панель", если роль не admin
+    const roleCookie = document.cookie.split('; ').find(row => row.startsWith('role='));
+    const role = roleCookie ? roleCookie.split('=')[1] : null;
+
+    if (role !== 'admin') {
+        const adminNavItem = document.querySelector('a[href="/admin.html"]')?.parentElement;
+        if (adminNavItem) {
+            adminNavItem.remove(); // Или: adminNavItem.style.display = 'none';
+        }
+    }
 });
 

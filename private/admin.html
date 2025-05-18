@@ -12,11 +12,10 @@
     <nav>
         <ul>
             <li><a href="/admin.html">Админ-панель</a></li>
-            <li><a href="/reports.html">Отчёты</a></li>
             <li><a href="/sales.html">Продажи</a></li>
             <li><a href="/warehouse-layout.html">Размещение товаров</a></li>
             <li><a href="/index.html">Поступления</a></li>
-            <li><a href="/products.html">Товары</a></li>
+            <li><button id="logoutBtn">Выход</button></li>
         </ul>
     </nav>
 
@@ -60,6 +59,28 @@
         </form>
     </div>
 
+    <!-- Модальное окно для редактирования товара -->
+    <div id="editModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
+        <h2>Редактировать товар</h2>
+        <form id="updateForm">
+            <input type="hidden" id="editProductId" name="id">
+            <label for="editName">Название товара:</label>
+            <input type="text" id="editName" name="name" required><br>
+    
+            <label for="editItemsPerPallet">Количество на поддоне:</label>
+            <input type="number" id="editItemsPerPallet" name="itemsPerPallet" required><br>
+    
+            <label for="editQuantity">Количество (штук):</label>
+            <input type="number" id="editQuantity" name="quantity" required><br>
+    
+            <label for="editPrice">Цена за единицу:</label>
+            <input type="number" id="editPrice" name="price" step="0.01" required min="0"><br>
+    
+            <button type="submit">Сохранить изменения</button>
+            <button type="button" id="closeModal">Отмена</button>
+        </form>
+    </div>
+
     <!-- Список товаров -->
     <div id="productList">
         <h2>Список товаров</h2>
@@ -79,11 +100,20 @@
         </table>
     </div>
 
+    <h1>Отчёты</h1>
+
     <!-- Кнопка для выполнения ABC-анализа -->
     <div id="abcAnalysis">
         <h2>ABC-анализ</h2>
-        <button id="performAnalysis">Выполнить ABC-анализ</button>
+        <button id="performAbcAnalysis">Выполнить ABC-анализ</button>
         <div id="abcResults"></div>
+    </div>
+
+    <!-- Отчёт по популярности товаров -->
+    <div id="productPopularity">
+        <h2>Популярность товаров</h2>
+        <button id="fetchPopularity">Получить отчёт</button>
+        <div id="popularityResults"></div>
     </div>
 
     <!-- Подключаем JavaScript -->

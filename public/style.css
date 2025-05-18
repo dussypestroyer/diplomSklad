@@ -101,6 +101,7 @@ nav ul {
 
 nav ul li {
     display: inline;
+    line-height: 37px;
 }
 
 nav ul li a {
@@ -110,11 +111,38 @@ nav ul li a {
     padding: 10px 15px;
     border-radius: 4px;
     transition: background-color 0.3s ease;
+
 }
 
 nav ul li a:hover {
     background-color: #575757;
 }
+
+nav ul li button {
+    display: inline; /* чтобы был точно как <a> */
+    background: none;
+    border: none;
+    margin: 0px;
+    color: white;
+    font-size: 16px;
+    font-family: inherit;
+    padding: 10px 15px;
+    border-radius: 4px;
+    cursor: pointer;
+    line-height: 1; /* как у ссылок */
+    transition: background-color 0.3s ease;
+    height: auto;
+    width: auto;
+    text-decoration: none;
+    box-sizing: border-box;
+}
+
+nav ul li button:hover {
+    background-color: #533f3f;  
+}
+
+
+
 
 /* Контейнер для основного контента */
 .container {
@@ -289,3 +317,4 @@ nav ul li a:hover {
     text-align: left;
     display: none;
 }
+

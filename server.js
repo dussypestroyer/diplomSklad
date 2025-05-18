@@ -4,6 +4,8 @@ const db = require('./db'); // Импортируем функции из db.js
 
 require('dotenv').config();
 
+const path = require('path'); // если ещё не подключал выше
+
 // Создаём экземпляр Express
 const app = express();
 const port = process.env.PORT || 5000;
@@ -29,6 +31,12 @@ app.use(cookieParser()); // вот сюда
 // Middleware для парсинга JSON
 app.use(bodyParser.json());
 
+
+// Страница администратора
+app.get('/admin.html', requireAuth, requireAdmin, (req, res) => {
+    res.sendFile(path.join(__dirname, 'private', 'admin.html'));
+});
+
 // Настройка статических файлов
 app.use(express.static('public'));
 
@@ -48,6 +56,8 @@ function requireAdmin(req, res, next) {
     }
     next();
 }
+
+
 
 
 
@@ -92,6 +102,11 @@ app.post('/login', async (req, res) => {
     }
 });
 
+app.get('/logout', (req, res) => {
+    res.clearCookie('session_id');
+    res.clearCookie('role');
+    res.status(200).json({ message: 'Вы вышли из системы' });
+});
 
 // ------------------------------
 // Маршруты для работы с товарами
@@ -142,7 +157,7 @@ app.put('/api/products/:id/add-quantity', requireAuth, async (req, res) => {
         return res.status(400).json({ error: 'Некорректное количество для добавления' });
     }
 
-    const client = await pool.connect();
+    const client = await db.pool.connect();
     try {
         await client.query('BEGIN');
 
@@ -336,11 +351,6 @@ app.get('/', requireAuth, (req, res) => {
 
 app.get('/index.html', requireAuth, (req, res) => {
     res.sendFile(__dirname + '/public/index.html');
-});
-
-// Страница администратора
-app.get('/admin.html', requireAdmin, (req, res) => {
-    res.sendFile(__dirname + '/public/admin.html');
 });
 
 // Страница ABC-анализа

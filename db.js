@@ -147,6 +147,17 @@ async function setupUpdateProduct(productId, name, itemsPerPallet, quantity, pri
     }
 }
 
+//Удаление товара
+async function deleteProduct(id) {
+    try {
+        const result = await pool.query('DELETE FROM products WHERE id = $1', [id]);
+        return result.rowCount; // может быть полезно, если нужно узнать — был ли удалён товар
+    } catch (error) {
+        console.error('Ошибка при удалении товара из базы:', error);
+        throw error;
+    }
+}
+
 // Функция добавления количества товара
 async function addToProductQuantity(productId, quantityToAdd) {
     const client = await pool.connect();
@@ -582,6 +593,7 @@ module.exports = {
     getProductPopularity,
     performAbcAnalysis,
     getAbcResults,
+    deleteProduct,
     getWarehouseLayout,
     getAbcAnalysisWithLayout,
     placeProductsInZones,
