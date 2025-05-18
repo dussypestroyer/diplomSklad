@@ -576,6 +576,68 @@ async function getAbcAnalysisWithLayout() {
     }
 }
 
+//Функция экономического закупа
+async function calculatePurchasePlan() {
+    const client = await pool.connect();
+    try {
+        // Получаем средние продажи за последние 30 дней по каждому товару
+        const salesQuery = `
+            SELECT 
+                product_name,
+                SUM(quantity) AS total_sold,
+                COUNT(DISTINCT sale_date) AS days_with_sales,
+                MAX(sale_date) AS last_sale_date
+            FROM sales
+            WHERE sale_date >= CURRENT_DATE - INTERVAL '30 days'
+            GROUP BY product_name
+        `;
+        const salesResult = await client.query(salesQuery);
+
+        // Получаем текущие остатки
+        const productsResult = await client.query('SELECT id, name, quantity FROM products');
+
+        const productsMap = {};
+        productsResult.rows.forEach(p => {
+            productsMap[p.name] = p;
+        });
+
+        const now = new Date();
+        const sevenDaysMs = 7 * 24 * 60 * 60 * 1000;
+
+        const plan = [];
+
+        for (const row of salesResult.rows) {
+            const productName = row.product_name;
+            const product = productsMap[productName];
+
+            if (!product) continue; // Пропускаем товары, которых нет в базе
+
+            const avgDailySales = row.total_sold / Math.max(row.days_with_sales, 1);
+            const stockLeft = product.quantity;
+            const daysLeft = stockLeft / Math.max(avgDailySales, 0.1); // Защита от деления на 0
+            const neededStock = avgDailySales * 7;
+            const toBuy = Math.ceil(Math.max(neededStock - stockLeft, 0));
+
+            if (toBuy > 0) {
+                plan.push({
+                    product_id: product.id,
+                    product_name: productName,
+                    avg_daily_sales: parseFloat(avgDailySales.toFixed(2)),
+                    current_stock: stockLeft,
+                    days_left: parseFloat(daysLeft.toFixed(2)),
+                    recommended_to_buy: toBuy,
+                });
+            }
+        }
+
+        return plan;
+    } catch (err) {
+        console.error('Ошибка при расчёте закупа:', err.message || err);
+        throw new Error('Не удалось рассчитать план закупа');
+    } finally {
+        client.release();
+    }
+}
 
 // Экспортируем функции
 module.exports = {
@@ -599,6 +661,7 @@ module.exports = {
     placeProductsInZones,
     placeProductInBuffer,
     authenticateUser,
+    calculatePurchasePlan,
 };
 
 

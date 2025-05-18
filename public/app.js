@@ -13,9 +13,9 @@ document.addEventListener('DOMContentLoaded', async () => {
             }
     
             const data = await response.json();
-            console.log('✅ Сессия активна:', data);
+            console.log(' Сессия активна:', data);
         } catch (error) {
-            console.warn('❌ Пользователь не авторизован:', error.message);
+            console.warn(' Пользователь не авторизован:', error.message);
             window.location.href = '/login.html';
         }
     };
@@ -800,6 +800,7 @@ const displayWarehouseGridWithAbc = async () => {
         }
     }
 
+
     // Получаем данные ABC-анализа с размещением
     try {
         const response = await fetch('/api/abc-analysis-layout');
@@ -834,6 +835,67 @@ if (!isLoginPage) {
     await checkAuth();  // только если это НЕ login.html
 }
 
+// Функция для экономического закупа
+const loadPurchasePlan = async () => {
+    const tableDiv = document.getElementById('planTable');
+    if (!tableDiv) {
+        console.warn('Контейнер для плана закупа не найден в DOM.');
+        return;
+    }
+
+    try {
+        const response = await fetch('/api/purchase-plan', {
+            method: 'GET',
+            credentials: 'include',
+        });
+
+        if (!response.ok) {
+            throw new Error('Ошибка загрузки данных');
+        }
+
+        const data = await response.json();
+
+        if (!Array.isArray(data) || data.length === 0) {
+            tableDiv.innerHTML = '<p>Нет товаров, требующих закупа.</p>';
+            return;
+        }
+
+        const table = document.createElement('table');
+        table.innerHTML = `
+            <thead>
+                <tr>
+                    <th>Товар</th>
+                    <th>Средний спрос в день</th>
+                    <th>Остаток на складе</th>
+                    <th>Дней осталось</th>
+                    <th>Рекомендуемый объём закупа</th>
+                </tr>
+            </thead>
+            <tbody></tbody>
+        `;
+
+        const tbody = table.querySelector('tbody');
+
+        data.forEach(item => {
+            const row = document.createElement('tr');
+            row.innerHTML = `
+                <td>${item.product_name}</td>
+                <td>${item.avg_daily_sales}</td>
+                <td>${item.current_stock}</td>
+                <td>${item.days_left < 1 ? 'менее 1 дня' : Math.round(item.days_left)}</td>
+                <td><strong>${item.recommended_to_buy}</strong></td>
+            `;
+            tbody.appendChild(row);
+        });
+
+        tableDiv.appendChild(table);
+    } catch (error) {
+        console.error('Ошибка при загрузке плана закупа:', error);
+        tableDiv.innerHTML = `<p style="color:red;">${error.message}</p>`;
+    }
+};
+
+
     // Инициализация функционала
     setupLoginForm();
     setupAbcAnalysis();
@@ -850,9 +912,8 @@ if (!isLoginPage) {
     await loadProductsIntoSelect();
     await loadProductsList();
     await loadSalesList();
+    await loadPurchasePlan();
 
-
-    // 👇 Скрываем кнопку "Админ-панель", если роль не admin
     const roleCookie = document.cookie.split('; ').find(row => row.startsWith('role='));
     const role = roleCookie ? roleCookie.split('=')[1] : null;
 

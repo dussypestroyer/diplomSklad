@@ -336,6 +336,20 @@ app.get('/api/abc-analysis-layout', requireAuth, async (req, res) => {
 });
 
 // ------------------------------
+// Маршруты для экономического закупа
+// ------------------------------
+
+app.get('/api/purchase-plan', requireAuth, async (req, res) => {
+    try {
+        const plan = await db.calculatePurchasePlan();
+        res.status(200).json(plan);
+    } catch (error) {
+        console.error('Ошибка при расчёте плана закупа:', error.message || error);
+        res.status(500).json({ error: 'Ошибка при расчёте плана закупа' });
+    }
+});
+
+// ------------------------------
 // Маршруты для страниц
 // ------------------------------
 
@@ -381,6 +395,10 @@ app.get('/warehouse-layout.html', requireAuth, (req, res) => {
 // Страница логина (без авторизации!)
 app.get('/login.html', (req, res) => {
     res.sendFile(__dirname + '/public/login.html');
+});
+
+app.get('/purchase-plan.html', requireAuth, (req, res) => {
+    res.sendFile(__dirname + '/public/purchase-plan.html');
 });
 
 // Запуск сервера
