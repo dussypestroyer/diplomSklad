@@ -46,15 +46,12 @@
     <!-- Форма для обновления количества товара -->
     <div id="updateProductForm">
         <h2>Обновить количество товара</h2>
-        <form id="updateForm">
+        <form id="addQuantityForm">
             <label for="productSelect">Выберите товар:</label>
             <select id="productSelect" name="productSelect" required></select>
 
             <label for="quantity">Новое количество:</label>
-            <input type="number" id="quantity" name="quantity" required>
-
-            <label for="editPrice">Цена за единицу:</label>
-            <input type="number" id="editPrice" name="editPrice" step="0.01" required min="0"><br>
+            <input type="number" id="quantityToAdd" name="quantityToAdd" required>
 
             <button type="submit">Обновить количество</button>
         </form>

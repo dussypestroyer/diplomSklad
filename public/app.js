@@ -412,6 +412,72 @@ const setupUpdateProduct = () => {
         }
     };
 
+    //Функция для загрузки списка товаров без редактирования
+    const loadReadonlyProductList = async () => {
+        const productListDiv = document.getElementById('productListReadOnly');
+        if (!productListDiv) {
+            console.warn('Контейнер для списка товаров не найден в DOM.');
+            return;
+        }
+    
+        try {
+            console.log('Загрузка только для чтения — список товаров...');
+            const response = await fetch('/api/products', {
+                method: 'GET',
+                headers: { 'Content-Type': 'application/json' },
+                credentials: 'include',
+            });
+    
+            if (!response.ok) {
+                throw new Error(`Ошибка сервера: ${response.status} ${response.statusText}`);
+            }
+    
+            const products = await response.json();
+            console.log('Товары загружены:', products);
+    
+            // ✅ Сортировка по ID (по возрастанию)
+            products.sort((a, b) => a.id - b.id);
+    
+            productListDiv.innerHTML = '';
+    
+            const table = document.createElement('table');
+            table.innerHTML = `
+                <thead>
+                    <tr>
+                        <th>ID</th>
+                        <th>Название товара</th>
+                        <th>Количество на поддоне</th>
+                        <th>Количество (штук)</th>
+                        <th>Цена за единицу</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            `;
+    
+            const tbody = table.querySelector('tbody');
+    
+            products.forEach(product => {
+                const price = typeof product.price === 'string' ? parseFloat(product.price) : product.price;
+    
+                const row = document.createElement('tr');
+                row.innerHTML = `
+                    <td>${product.id || '—'}</td>
+                    <td>${product.name || '—'}</td>
+                    <td>${product.items_per_pallet || '—'}</td>
+                    <td>${product.quantity || '—'}</td>
+                    <td>${typeof price === 'number' ? price.toFixed(2) : '—'}</td>
+                `;
+                tbody.appendChild(row);
+            });
+    
+            productListDiv.appendChild(table);
+        } catch (error) {
+            console.error('Ошибка при загрузке списка (только чтение):', error);
+            alert(error.message || 'Не удалось загрузить список товаров.');
+        }
+    };
+    
+
 // Функция для загрузки и отображения списка товаров
 const loadProductsList = async () => {
     const productListDiv = document.getElementById('productList');
@@ -907,6 +973,7 @@ const loadPurchasePlan = async () => {
     displayPopularityResults();
     setupAddSale();
     setupLogoutButton();
+    loadReadonlyProductList();
 
     await displayWarehouseGridWithAbc();
     await loadProductsIntoSelect();
