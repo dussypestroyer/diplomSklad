@@ -12,28 +12,28 @@
     <nav>
         <ul>
             <li><a href="/admin.html">Админ-панель</a></li>
-            <li><a href="/sales.html">Продажи</a></li>
-            <li><a href="/warehouse-layout.html">Размещение товаров</a></li>
-            <li><a href="/index.html">Поступления</a></li>
-            <li><a href="/purchase-plan.html">Закуп</a></li>
+            <li><a href="/sales.html">Реализация товаров</a></li>
+            <li><a href="/warehouse-layout.html">Хранение на складе</a></li>
+            <li><a href="/index.html">Приход товара</a></li>
+            <li><a href="/purchase-plan.html">План закупок</a></li>
             <li><button id="logoutBtn">Выход</button></li>
         </ul>
     </nav>
 
     <div class="main-container">
-        <h1>Админ-панель</h1>
+        <h1>Управление складом</h1>
 
     <!-- Форма для добавления нового товара -->
     <div id="addProductForm">
-        <h2>Добавить товар</h2>
+        <h2>Новая позиция номенклатуры</h2>
         <form id="productForm">
-            <label for="name">Название товара:</label>
+            <label for="name">Наименование:</label>
             <input type="text" id="name" name="name" autocomplete="name" required>
 
-            <label for="itemsPerPallet">Количество на поддоне:</label>
+            <label for="itemsPerPallet">Единиц на поддоне:</label>
             <input type="number" id="itemsPerPallet" name="itemsPerPallet" required>
 
-            <label for="quantity">Количество товаров (штук):</label>
+            <label for="quantity">Остаток на складе (шт.):</label>
             <input type="number" id="quantity" name="quantity" required>
 
             <label for="price">Цена за единицу:</label>
@@ -45,7 +45,7 @@
 
     <!-- Форма для обновления количества товара -->
     <div id="updateProductForm">
-        <h2>Обновить количество товара</h2>
+        <h2>Приход товара на склад</h2>
         <form id="addQuantityForm">
             <label for="productSelect">Выберите товар:</label>
             <select id="productSelect" name="productSelect" required></select>
@@ -53,42 +53,43 @@
             <label for="quantity">Новое количество:</label>
             <input type="number" id="quantityToAdd" name="quantityToAdd" required>
 
-            <button type="submit">Обновить количество</button>
+            <button type="submit">Обновить количество товара</button>
         </form>
     </div>
 
     <!-- Модальное окно для редактирования товара -->
     <div id="editModal" style="display: none; position: fixed; top: 50%; left: 50%; transform: translate(-50%, -50%); background: white; padding: 20px; box-shadow: 0 0 10px rgba(0, 0, 0, 0.1);">
-        <h2>Редактировать товар</h2>
+        <h2>Изменение сведений о товаре</h2>
         <form id="updateForm">
             <input type="hidden" id="editProductId" name="id">
-            <label for="editName">Название товара:</label>
+            <label for="editName">Наименование:</label>
             <input type="text" id="editName" name="name" required><br>
     
-            <label for="editItemsPerPallet">Количество на поддоне:</label>
+            <label for="editItemsPerPallet">Единиц на поддоне:</label>
             <input type="number" id="editItemsPerPallet" name="itemsPerPallet" required><br>
     
-            <label for="editQuantity">Количество (штук):</label>
+            <label for="editQuantity">Остаток на складе (шт.):</label>
             <input type="number" id="editQuantity" name="quantity" required><br>
     
             <label for="editPrice">Цена за единицу:</label>
             <input type="number" id="editPrice" name="price" step="0.01" required min="0"><br>
     
-            <button type="submit">Сохранить изменения</button>
+            <button type="submit">Обновить карточку товара</button>
             <button type="button" id="closeModal">Отмена</button>
         </form>
     </div>
 
+    <h1>Номенклатура</h1>
+
     <!-- Список товаров -->
     <div id="productList">
-        <h2>Список товаров</h2>
         <table id="productsTable">
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Название товара</th>
-                    <th>Количество на поддоне</th>
-                    <th>Количество товаров (штук)</th>
+                    <th>Наименование</th>
+                    <th>Единиц на поддоне</th>
+                    <th>Остаток на складе (шт.)</th>
                     <th>Действия</th>
                 </tr>
             </thead>
@@ -102,14 +103,14 @@
 
     <!-- Кнопка для выполнения ABC-анализа -->
     <div id="abcAnalysis">
-        <h2>ABC-анализ</h2>
+        <h2>Классификация по значимости (ABC)</h2>
         <button id="performAbcAnalysis">Выполнить ABC-анализ</button>
         <div id="abcResults"></div>
     </div>
 
     <!-- Отчёт по популярности товаров -->
     <div id="productPopularity">
-        <h2>Популярность товаров</h2>
+        <h2>Отчёт по оборачиваемости</h2>
         <button id="fetchPopularity">Получить отчёт</button>
         <div id="popularityResults"></div>
     </div>

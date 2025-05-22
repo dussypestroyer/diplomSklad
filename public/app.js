@@ -138,7 +138,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         table.innerHTML = `
             <thead>
                 <tr>
-                    <th>Товар</th>
+                    <th>Наименование</th>
                     <th>Категория</th>
                     <th>Выручка</th>
                 </tr>
@@ -435,7 +435,7 @@ const setupUpdateProduct = () => {
             const products = await response.json();
             console.log('Товары загружены:', products);
     
-            // ✅ Сортировка по ID (по возрастанию)
+            //  Сортировка по ID (по возрастанию)
             products.sort((a, b) => a.id - b.id);
     
             productListDiv.innerHTML = '';
@@ -445,9 +445,9 @@ const setupUpdateProduct = () => {
                 <thead>
                     <tr>
                         <th>ID</th>
-                        <th>Название товара</th>
-                        <th>Количество на поддоне</th>
-                        <th>Количество (штук)</th>
+                        <th>Наименование</th>
+                        <th>Единиц на поддоне</th>
+                        <th>Остаток на складе (шт.)</th>
                         <th>Цена за единицу</th>
                     </tr>
                 </thead>
@@ -510,9 +510,9 @@ const loadProductsList = async () => {
             <thead>
                 <tr>
                     <th>ID</th>
-                    <th>Название товара</th>
-                    <th>Количество на поддоне</th>
-                    <th>Количество (штук)</th>
+                    <th>Наименование</th>
+                    <th>Единиц на поддоне</th>
+                    <th>Остаток на складе (шт.)</th>
                     <th>Цена за единицу</th>
                     <th>Действия</th>
                 </tr>
@@ -537,7 +537,7 @@ const loadProductsList = async () => {
                 <td>${product.quantity || 'N/A'}</td>
                 <td>${typeof price === 'number' ? price.toFixed(2) : 'N/A'}</td>
                 <td>
-                    <button class="edit-btn" data-id="${product.id}">Редактировать</button>
+                    <button class="edit-btn" data-id="${product.id}">Изменить</button>
                     <button class="delete-btn" data-id="${product.id}">Удалить</button>
                 </td>
             `;
@@ -723,9 +723,9 @@ const loadSalesList = async () => {
             <thead>
                 <tr>
                     <th>ID Продажи</th>
-                    <th>Название товара</th>
-                    <th>Дата продажи</th>
-                    <th>Количество</th>
+                    <th>Наименование</th>
+                    <th>Дата отгрузки</th>
+                    <th>Кол-во отгружено</th>
                     <th>Выручка</th>
                 </tr>
             </thead>
